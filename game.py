@@ -1,4 +1,5 @@
 import pygame
+import pygame_menu
 from enemy import Enemy
 from gameObject import GameObject
 from player import Player
@@ -14,6 +15,10 @@ class Game:
         self.width = 800
         self.height = 1000
         self.white_colour = (255, 255, 255)
+        
+        # Fuente de texto
+        pygame.font.init()
+        self.my_font = pygame.font.SysFont("inkfree", 26, bold=True)
 
         # Creamos la pantalla
         self.game_window = pygame.display.set_mode((self.width, self.height))
@@ -29,6 +34,14 @@ class Game:
         # Creamos el GameObject objetivo
         self.goal= GameObject(325, 20, 150, 90, 'assets/blackhole.png') 
         self.level=1 # Nivel
+        self.points=0 # Puntuacion
+        self.name="Desconocido"
+
+        with open('record.txt') as f:
+            record = f.readlines()
+        self.high_score=int(record[1])
+        self.high_scorer=record[0].rstrip()
+
         self.reset_map() # Reseteamos el mapa
         
         # Cogemos el reloj de pygame para la actualización del juego cada 60 ticks.
@@ -43,6 +56,14 @@ class Game:
         self.game_window.blit(self.background.image, (self.background.x, self.background.y))
         self.game_window.blit(self.goal.image, (self.goal.x, self.goal.y))
         self.game_window.blit(self.player.image, (self.player.x, self.player.y))
+
+        text_surface = self.my_font.render(f"Puntuación: {str(self.points)}", False, self.white_colour)
+        self.game_window.blit(text_surface, (15,0))
+
+        records = self.my_font.render("High-score:", False, self.white_colour)
+        records2= self.my_font.render(f"{self.high_scorer}, {str(self.high_score)} puntos", False, self.white_colour)
+        self.game_window.blit(records, (self.width-175,0))
+        self.game_window.blit(records2, (self.width-records2.get_width(),30))
 
         for enemy in self.enemies:
            self.game_window.blit(enemy.image, (enemy.x, enemy.y)) 
@@ -62,6 +83,14 @@ class Game:
     def reset_map(self):
         """Funcion para resetear el mapa cada vez que comienza un nivel. Coloca al jugador en posición de salida y a los enemigos en una posición aleatoria.
         """
+        #Record de puntuacion
+        if self.points>self.high_score:
+            self.high_scorer=self.name
+            self.high_score=self.points
+            with open('record.txt', 'w') as f:
+                f.write(f"{self.name[:12]}\n")
+                f.write(f"{str(self.points)}")
+
         # Colocamos un objeto de juego Player en la posición de inicio
         self.player = Player(550, self.height-150, 100, 150, 'assets/tardis.png', 10)
         # La velocidad de movimiento de los enemigos varia segun el nivel en el que estamos
@@ -70,18 +99,18 @@ class Game:
         # Creamos los enemigos según nivel
         if self.level >= 4.0:
             self.enemies = [
-                Enemy(400, random.randint(151,400), random.randint(70,150), random.randint(60,90), 'assets/enemy.png', speed),
-                Enemy(400, random.randint(151,400), random.randint(70,150), random.randint(60,90), 'assets/enemy.png', speed),
-                Enemy(400, random.randint(151,400), random.randint(70,150), random.randint(60,90), 'assets/enemy.png', speed),
+                Enemy(400, random.randint(151,650), random.randint(70,150), random.randint(60,90), 'assets/enemy.png', speed),
+                Enemy(400, random.randint(151,650), random.randint(70,150), random.randint(60,90), 'assets/enemy.png', speed),
+                Enemy(400, random.randint(151,650), random.randint(70,150), random.randint(60,90), 'assets/enemy.png', speed),
             ]
         elif self.level >= 2.0:
             self.enemies = [
-                Enemy(400, random.randint(151,400), random.randint(70,150), random.randint(60,90), 'assets/enemy.png', speed),
-                Enemy(400, random.randint(151,400), random.randint(70,150), random.randint(60,90), 'assets/enemy.png', speed)
+                Enemy(400, random.randint(151,650), random.randint(70,150), random.randint(60,90), 'assets/enemy.png', speed),
+                Enemy(400, random.randint(151,650), random.randint(70,150), random.randint(60,90), 'assets/enemy.png', speed)
             ]
         else:
             self.enemies = [
-                Enemy(400, random.randint(151,400), random.randint(70,150), random.randint(60,90), 'assets/enemy.png', speed)
+                Enemy(400, random.randint(151,650), random.randint(70,150), random.randint(60,90), 'assets/enemy.png', speed)
             ]
 
     def check_if_collided(self) -> bool:
@@ -93,9 +122,11 @@ class Game:
         for enemy in self.enemies:
             if self.detect_collision(self.player, enemy):
                 self.level = 1.0
+                self.points = 0
                 return True
         if self.detect_collision(self.player, self.goal):
             self.level += 0.5
+            self.points +=1
             return True
         
         return False
@@ -121,9 +152,20 @@ class Game:
             return False
         return True
 
+    def run_menu(self):
+        menu = pygame_menu.Menu('Welcome', 400, 300,
+                       theme=pygame_menu.themes.THEME_BLUE)
+
+        self.name_input=menu.add.text_input('Name: ', default='Desconocido')
+        menu.add.button('Play', self.run_game_loop)
+        menu.add.button('Quit', pygame_menu.events.EXIT)
+
+        menu.mainloop(self.game_window)
+
     def run_game_loop(self):
         """Funcion de juego. Es un bucle que se ejecuta 60 veces por segundo, en el cual se actualizan los eventos de pulsación de teclas, la lógica, la pantalla y las colisiones del juego.
         """
+        self.name=self.name_input.get_value()
         player_direction = None
         while True:
             # Deteccion de eventos
