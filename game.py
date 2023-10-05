@@ -1,3 +1,4 @@
+import time
 import pygame
 import pygame_menu
 from enemy import Enemy
@@ -12,8 +13,6 @@ class Game:
         """Clase constructor del juego
         """
         # Altura y anchura de la pantalla de juego
-        self.width = 800
-        self.height = 1000
         self.white_colour = (255, 255, 255)
         
         # Fuente de texto
@@ -21,7 +20,9 @@ class Game:
         self.my_font = pygame.font.SysFont("inkfree", 26, bold=True)
 
         # Creamos la pantalla
-        self.game_window = pygame.display.set_mode((self.width, self.height))
+        self.game_window = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+        self.width = self.game_window.get_width()
+        self.height = self.game_window.get_height()
         # Creamos un GameObject para el fondo de la pantalla
         self.background = GameObject(0, 0, self.width, self.height, 'assets/background3.jpg') 
 
@@ -32,7 +33,7 @@ class Game:
         pygame.mixer.music.play(-1)
 
         # Creamos el GameObject objetivo
-        self.goal= GameObject(325, 20, 150, 90, 'assets/blackhole.png') 
+        self.goal= GameObject(int(self.width/2.5), 20, 200, 90, 'assets/blackhole.png') 
         self.level=1 # Nivel
         self.points=0 # Puntuacion
         self.name="Desconocido"
@@ -52,16 +53,15 @@ class Game:
         """
 
         self.game_window.fill(self.white_colour)
-
         self.game_window.blit(self.background.image, (self.background.x, self.background.y))
         self.game_window.blit(self.goal.image, (self.goal.x, self.goal.y))
         self.game_window.blit(self.player.image, (self.player.x, self.player.y))
 
-        text_surface = self.my_font.render(f"Puntuación: {str(self.points)}", False, self.white_colour)
+        text_surface = self.my_font.render(f"Torreznos: {str(self.points)}", False, self.white_colour)
         self.game_window.blit(text_surface, (15,0))
 
         records = self.my_font.render("High-score:", False, self.white_colour)
-        records2= self.my_font.render(f"{self.high_scorer}, {str(self.high_score)} puntos", False, self.white_colour)
+        records2= self.my_font.render(f"{self.high_scorer}, {str(self.high_score)} agujeros negros", False, self.white_colour)
         self.game_window.blit(records, (self.width-175,0))
         self.game_window.blit(records2, (self.width-records2.get_width(),30))
 
@@ -92,25 +92,27 @@ class Game:
                 f.write(f"{str(self.points)}")
 
         # Colocamos un objeto de juego Player en la posición de inicio
-        self.player = Player(550, self.height-150, 100, 150, 'assets/tardis.png', 10)
+        width_player=10+int(self.level*16)
+        height_player=15+int(self.level*25)
+        self.player = Player(random.randint(0,self.game_window.get_height()), self.height-height_player, width_player, height_player, 'assets/tardis.png', 10)
         # La velocidad de movimiento de los enemigos varia segun el nivel en el que estamos
         speed = 3 + (self.level * 3)
 
         # Creamos los enemigos según nivel
         if self.level >= 4.0:
             self.enemies = [
-                Enemy(400, random.randint(151,650), random.randint(70,150), random.randint(60,90), 'assets/enemy.png', speed),
-                Enemy(400, random.randint(151,650), random.randint(70,150), random.randint(60,90), 'assets/enemy.png', speed),
-                Enemy(400, random.randint(151,650), random.randint(70,150), random.randint(60,90), 'assets/enemy.png', speed),
+                Enemy(400, random.randint(151,self.game_window.get_height()-self.player.height-100), random.randint(70,150), random.randint(60,90), 'assets/enemy.png', speed+random.randint(0,2)),
+                Enemy(400, random.randint(151,self.game_window.get_height()-self.player.height-100), random.randint(70,150), random.randint(60,90), 'assets/enemy.png', speed+random.randint(0,2)),
+                Enemy(400, random.randint(151,self.game_window.get_height()-self.player.height-100), random.randint(70,150), random.randint(60,90), 'assets/enemy.png', speed+random.randint(0,2)),
             ]
         elif self.level >= 2.0:
             self.enemies = [
-                Enemy(400, random.randint(151,650), random.randint(70,150), random.randint(60,90), 'assets/enemy.png', speed),
-                Enemy(400, random.randint(151,650), random.randint(70,150), random.randint(60,90), 'assets/enemy.png', speed)
+                Enemy(400, random.randint(151,self.game_window.get_height()-self.player.height-100), random.randint(70,150), random.randint(60,90), 'assets/enemy.png', speed+random.randint(0,2)),
+                Enemy(400, random.randint(151,self.game_window.get_height()-self.player.height-100), random.randint(70,150), random.randint(60,90), 'assets/enemy.png', speed+random.randint(0,2))
             ]
         else:
             self.enemies = [
-                Enemy(400, random.randint(151,650), random.randint(70,150), random.randint(60,90), 'assets/enemy.png', speed)
+                Enemy(400, random.randint(151,self.game_window.get_height()-self.player.height-100), random.randint(70,150), random.randint(60,90), 'assets/enemy.png', speed)
             ]
 
     def check_if_collided(self) -> bool:
@@ -153,10 +155,12 @@ class Game:
         return True
 
     def run_menu(self):
-        menu = pygame_menu.Menu('Welcome', 400, 300,
-                       theme=pygame_menu.themes.THEME_BLUE)
-
-        self.name_input=menu.add.text_input('Name: ', default='Desconocido')
+        menu = pygame_menu.Menu('Doctor Who: Across the Universe', 500, 400,
+                       theme=pygame_menu.themes.THEME_SOLARIZED)
+        
+        menu.add.label("¡El Doctor te necesita!\n Lleva la TARDIS al agujero negro para escapar del peligro\nEsquiva las naves Dalek o perderás", max_char=-1, font_size=20)
+        menu.add.vertical_margin(15)
+        self.name_input=menu.add.text_input('Player: ', default='Desconocido')
         menu.add.button('Play', self.run_game_loop)
         menu.add.button('Quit', pygame_menu.events.EXIT)
 
@@ -174,6 +178,8 @@ class Game:
                 if event.type == pygame.QUIT:
                     return
                 elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        return
                     if event.key == pygame.K_RIGHT:
                         player_direction = "R"
                     elif event.key == pygame.K_LEFT:
@@ -193,7 +199,8 @@ class Game:
             self.draw_objects()
             
             # Colisiones
-            if self.check_if_collided():
+            if self.check_if_collided():   
+                time.sleep(0.5)             
                 self.reset_map()
 
             self.clock.tick(60)
